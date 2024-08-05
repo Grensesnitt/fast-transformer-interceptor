@@ -1,0 +1,32 @@
+{
+  "name": "fast-transform-interceptor",
+  "version": "0.1.0",
+  "description": "A fast response transform interceptor for NestJS applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["nestjs", "interceptor", "transform", "dto"],
+  "author": "Vegard Hanssen @ Grensesnitt",
+  "license": "MIT",
+  "peerDependencies": {
+    "@nestjs/common": "*",
+    "@nestjs/core": "*",
+    "@nestjs/swagger": "*",
+    "reflect-metadata": "*",
+    "rxjs": "*"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/swagger": "^7.0.0",
+    "@types/node": "^20.0.0",
+    "rxjs": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist/**/*"
+  ]
+}
