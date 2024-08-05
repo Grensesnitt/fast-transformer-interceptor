@@ -223,8 +223,15 @@ export class FastTransformInterceptor implements NestInterceptor {
 
         for (const [key, value] of Object.entries(filter)) {
             if (!obj.hasOwnProperty(key)) {
-                if (!value.noCheck && value.required && !value.nullable) {
+                if (!value.noCheck && (value.required || value.isNestedObject)) {
                     throw new TransformError(`Required field '${key}' is missing`, dtoName, key, undefined, undefined, undefined, obj, filter);
+                }
+                continue;
+            }
+
+            if (obj[key] === undefined) {
+                if (!value.noCheck && value.required) {
+                    throw new TransformError(`Required field '${key}' cannot be undefined`, dtoName, key, undefined, undefined, undefined, obj, filter);
                 }
                 continue;
             }
@@ -245,21 +252,84 @@ export class FastTransformInterceptor implements NestInterceptor {
     }
 
     private transformField(value: any, fieldMetadata: any, fieldPath: string): any {
+        if (value === undefined) {
+            if (fieldMetadata.required) {
+                throw new TransformError(`Required field is missing`, fieldPath, '', value, fieldMetadata.type.name, undefined, value, fieldMetadata);
+            }
+            return undefined;
+        }
+
+        if (value === null && fieldMetadata.nullable) {
+            return null;
+        }
+
+        if (fieldMetadata.isNestedObject) {
+            if (typeof value !== 'object' || value === null) {
+                throw new TransformError(`Field should be an object`, fieldPath, '', value, 'object', undefined, value, fieldMetadata);
+            }
+            const transformedNested = this.transform(value, fieldMetadata.nestedFields, fieldPath);
+            for (const [nestedKey, nestedValue] of Object.entries(fieldMetadata.nestedFields)) {
+                const nestedFieldPath = `${fieldPath}.${nestedKey}`;
+                if (value.hasOwnProperty(nestedKey)) {
+                    const validationResult = this.validateFieldType(value[nestedKey], nestedValue, nestedFieldPath);
+                    if (!validationResult.isValid) {
+                        throw new TransformError(
+                            `Invalid type for nested field '${nestedKey}'`,
+                            nestedFieldPath,
+                            nestedKey,
+                            value[nestedKey],
+                            validationResult.expectedType,
+                            undefined,
+                            value,
+                            fieldMetadata
+                        );
+                    }
+                } else if (this.isFieldRequired(nestedValue)) {
+                    throw new TransformError(
+                        `Required nested field '${nestedKey}' is missing`,
+                        fieldPath,
+                        nestedKey,
+                        undefined,
+                        undefined,
+                        undefined,
+                        value,
+                        fieldMetadata
+                    );
+                }
+            }
+            return transformedNested;
+        }
+
         switch (fieldMetadata.typeCheck) {
             case 1: // isPrimitive
                 return this.transformPrimitive(value, fieldMetadata, fieldPath);
             case 2: // isClass
-                return this.transform(value, this.transformDtoFilter(fieldMetadata.type), fieldPath);
-            case 4: // isArrayOfClass
-                return this.transformArrayOfClass(value, fieldMetadata, fieldPath);
-            case 8: // isEnum
-                return this.transformEnum(value, fieldMetadata, fieldPath);
-            case 16: // isArrayOfPrimitive
-                return this.transformArrayOfPrimitive(value, fieldMetadata, fieldPath);
             case 32: // isNestedObject
-                return this.transform(value, fieldMetadata.nestedFields, fieldPath);
+                if (typeof value !== 'object' || value === null) {
+                    throw new TransformError(`Field should be an object`, fieldPath, '', value, 'object', undefined, value, fieldMetadata);
+                }
+                return this.transform(value, fieldMetadata.isNestedObject ? fieldMetadata.nestedFields : this.transformDtoFilter(fieldMetadata.type), fieldPath);
+            case 4: // isArrayOfClass
+            case 16: // isArrayOfPrimitive
+                if (!Array.isArray(value)) {
+                    throw new TransformError(`Field should be an array`, fieldPath, '', value, 'array', undefined, value, fieldMetadata);
+                }
+                return value.map((item: any, index: number) => {
+                    if (item === undefined) {
+                        throw new TransformError(`Invalid value in array`, `${fieldPath}[${index}]`, '', item, 'non-undefined', undefined, value, fieldMetadata);
+                    }
+                    return item === null && fieldMetadata.nullable
+                        ? null
+                        : fieldMetadata.typeCheck === 4
+                            ? this.transform(item, this.transformDtoFilter(fieldMetadata.type[0]), `${fieldPath}[${index}]`)
+                            : this.transformPrimitive(item, fieldMetadata, `${fieldPath}[${index}]`);
+                });
+            case 8: // isEnum
+                if (!Object.values(fieldMetadata.enum).includes(value)) {
+                    throw new TransformError(`Invalid enum value`, fieldPath, '', value, 'enum', Object.values(fieldMetadata.enum), value, fieldMetadata);
+                }
+                return value;
             default:
-                if (fieldMetadata.noCheck) return value;
                 throw new TransformError(`Unexpected type for field`, fieldPath, '', value, undefined, undefined, value, fieldMetadata);
         }
     }
@@ -280,32 +350,6 @@ export class FastTransformInterceptor implements NestInterceptor {
             }
         }
         return value;
-    }
-
-    private transformArrayOfClass(value: any, fieldMetadata: any, fieldPath: string): any {
-        if (!fieldMetadata.noCheck && !Array.isArray(value)) {
-            throw new TransformError(`Field should be an array`, fieldPath, '', value, 'array', undefined, value, fieldMetadata);
-        }
-        const itemFilter = this.transformDtoFilter(fieldMetadata.type[0]);
-        return Array.isArray(value)
-            ? value.map((item: any, index: number) => this.transform(item, itemFilter, `${fieldPath}[${index}]`))
-            : fieldMetadata.noCheck ? value : [];
-    }
-
-    private transformEnum(value: any, fieldMetadata: any, fieldPath: string): any {
-        if (!fieldMetadata.noCheck && !Object.values(fieldMetadata.enum).includes(value)) {
-            throw new TransformError(`Invalid enum value`, fieldPath, '', value, 'enum', Object.values(fieldMetadata.enum), value, fieldMetadata);
-        }
-        return value;
-    }
-
-    private transformArrayOfPrimitive(value: any, fieldMetadata: any, fieldPath: string): any {
-        if (!fieldMetadata.noCheck && !Array.isArray(value)) {
-            throw new TransformError(`Field should be an array`, fieldPath, '', value, 'array', undefined, value, fieldMetadata);
-        }
-        return Array.isArray(value)
-            ? value.map((item: any, index: number) => this.transformPrimitive(item, fieldMetadata, `${fieldPath}[${index}]`))
-            : fieldMetadata.noCheck ? value : [];
     }
 
     private isClass(func: any): boolean {
@@ -363,6 +407,47 @@ export class FastTransformInterceptor implements NestInterceptor {
         }
     }
 
+    private validateFieldType(value: any, fieldMetadata: any, fieldPath: string): { isValid: boolean; expectedType?: string } {
+        if (!fieldMetadata || typeof fieldMetadata !== 'object') {
+            return { isValid: false, expectedType: 'unknown' };
+        }
+
+        if (fieldMetadata.noCheck) return { isValid: true };
+
+        let expectedType: string | undefined;
+        let isValid = false;
+
+        switch (fieldMetadata.typeCheck) {
+            case 1: // isPrimitive
+                expectedType = fieldMetadata.expectedType || 'primitive';
+                isValid = this.validatePrimitiveType(value, expectedType);
+                break;
+            case 2: // isClass
+            case 32: // isNestedObject
+                expectedType = 'object';
+                isValid = typeof value === 'object' && value !== null;
+                break;
+            case 4: // isArrayOfClass
+            case 16: // isArrayOfPrimitive
+                expectedType = 'array';
+                isValid = Array.isArray(value);
+                break;
+            case 8: // isEnum
+                expectedType = 'enum';
+                isValid = fieldMetadata.enum && Object.values(fieldMetadata.enum).includes(value);
+                break;
+            default:
+                expectedType = 'unknown';
+                isValid = false;
+        }
+
+        return { isValid, expectedType };
+    }
+
+    private isFieldRequired(fieldMetadata: any): boolean {
+        return fieldMetadata && typeof fieldMetadata === 'object' && fieldMetadata.required === true;
+    }
+
     private handleError(error: Error | TransformError): BadRequestException {
         let errorMessage = 'An error occurred while processing the request.';
         let debugInfo = null;
@@ -407,5 +492,9 @@ export class FastTransformInterceptor implements NestInterceptor {
             message: errorMessage,
             debug: debugInfo,
         });
+    }
+
+    public static clearCache() {
+        dtoCache.clear();
     }
 }
