@@ -1,6 +1,6 @@
 {
   "name": "fast-transform-interceptor",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "A fast response transform interceptor for NestJS applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,5 +28,13 @@
   },
   "files": [
     "dist/**/*"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Grensesnitt/fast-transformer-interceptor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Grensesnitt/fast-transformer-interceptor/issues"
+  },
+  "homepage": "https://github.com/Grensesnitt/fast-transformer-interceptor#readme"
 }

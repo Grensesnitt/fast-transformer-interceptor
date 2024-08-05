@@ -19,6 +19,41 @@ The `FastTransformInterceptor` is a powerful tool for automatically transforming
 6. [Advanced Features](#advanced-features)
 7. [Best Practices](#best-practices)
 
+## Showcase
+
+fast-transform-interceptor is both fast and easy to use. Normally it will return about 5-10 times faster than using class-transformer.
+
+```typescript
+// Using Sequelize model in service
+class UserModel extends Model {
+    @Column
+    username: string;
+    
+    @Column
+    password: string;
+}
+
+class UserDto {
+    username: string;
+}
+
+class UserService {
+    async getUsers(): Promise<User> {
+        return this.userModel.findAll();
+    }
+}
+
+class UserController {
+    @Get()
+    @ResponseType({type: UserDto})
+    async getAll() {
+        return this.userService.getUsers();
+    }
+}
+```
+
+This returns only username in the api result.
+
 ## Installation
 
 Before using the `FastTransformInterceptor`, make sure you have the `@nestjs/swagger` package installed. You can install it using npm or yarn:

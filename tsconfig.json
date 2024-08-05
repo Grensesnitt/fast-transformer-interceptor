@@ -10,12 +10,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@/decorators/*": ["./src/decorators/*"],
-      "@/interceptors/*": ["./src/interceptors/*"],
-      "@/*": ["./src/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

@@ -9,10 +9,10 @@ import {Reflector} from '@nestjs/core';
 import {catchError, Observable, throwError} from 'rxjs';
 import {map} from 'rxjs/operators';
 import 'reflect-metadata';
-import {NO_CHECK_KEY} from "@/decorators/no-check.decorator";
-import {NO_OUT_KEY} from "@/decorators/no-out.decorator";
-import {NO_CHECK_PRIMITIVES_KEY} from "@/decorators/no-check-primitives.decorator";
-import {RESPONSE_TYPE_KEY, ResponseTypeOptions} from "@/decorators/response-type.decorator";
+import {NO_CHECK_KEY} from "../decorators/no-check.decorator";
+import {NO_OUT_KEY} from "../decorators/no-out.decorator";
+import {NO_CHECK_PRIMITIVES_KEY} from "../decorators/no-check-primitives.decorator";
+import {RESPONSE_TYPE_KEY, ResponseTypeOptions} from "../decorators/response-type.decorator";
 
 // Define a generic constructor type
 type Constructor<T = any> = new (...args: any[]) => T;
