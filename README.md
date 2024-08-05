@@ -52,16 +52,16 @@ class UserController {
 }
 ```
 
-This returns only username in the api result.
+This returns only username in the api result. And if you use the swagger cli plugin for documentation, you will normally get correct types on all the results as in documentation.
 
 ## Installation
 
 Before using the `FastTransformInterceptor`, make sure you have the `@nestjs/swagger` package installed. You can install it using npm or yarn:
 
 ```bash
-npm install --save @nestjs/swagger
+npm install --save @nestjs/swagger fast-transform-interceptor
 # or
-yarn add @nestjs/swagger
+yarn add @nestjs/swagger fast-transform-interceptor
 ```
 
 ## Configuration
@@ -97,6 +97,29 @@ You do not need to start the swagger documentation for `FastTransformInterceptor
 ## Global Configuration
 
 When setting up the `FastTransformInterceptor`, you can provide default values for the response structure. These defaults are used when not overridden by the `@ResponseType` decorator.
+
+```typescript
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { FastTransformInterceptor } from './fast-transform.interceptor';
+
+@Module({
+  providers: [
+     {
+        provide: APP_INTERCEPTOR,
+        useFactory: (reflector: Reflector) => {
+           return new FastTransformInterceptor({
+              reflector
+           });
+        },
+        inject: [Reflector]
+     },
+  ],
+})
+export class AppModule {}
+```
+
+Or a more feature rich setup.
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -370,7 +393,7 @@ Remember, the `FastTransformInterceptor` uses these DTO configurations to ensure
 
 The transformer handles different types of data:
 
-1. Primitive types (string, number, boolean): Passed through as-is
+1. Primitive types (string, number, boolean): Checked for correct type
 2. Classes: Recursively transformed
 3. Arrays of classes: Each item is recursively transformed
 4. Enums: Validated against enum values
@@ -386,22 +409,22 @@ This section details the various ways you can define properties in your DTOs and
 1. `test: number;`
    - Treated as a primitive type.
    - Passed through as-is during transformation.
-   - If the value is not a number, it will throw a `TransformError`.
+   - If the value is not a number, it will try to convert to number, if not throw a `TransformError`.
 
 2. `test: string;`
    - Treated as a primitive type.
    - Passed through as-is during transformation.
-   - If the value is not a string, it will throw a `TransformError`.
+   - If the value is not a string, it will try to convert to string, if not throw a `TransformError`.
 
 3. `test: boolean;`
    - Treated as a primitive type.
    - Passed through as-is during transformation.
-   - If the value is not a boolean, it will throw a `TransformError`.
+   - If the value is not a boolean, it will try to convert to boolean, if not throw a `TransformError`.
 
 4. `test: bigint;`
    - Treated as a primitive type.
    - Passed through as-is during transformation.
-   - If the value is not a bigint, it will throw a `TransformError`.
+   - If the value is not a bigint, it will try to convert to bigint, if not throw a `TransformError`.
 
 5. `test: symbol;`
    - Treated as a primitive type.
@@ -478,33 +501,26 @@ By understanding these behaviors, you can design your DTOs to precisely control 
 
 ## Error Handling
 
-The transformer throws a `TransformError` when it encounters validation issues. To enable detailed error information, you need to set the `debug` configuration to `true` in your `ConfigService`.
-
-Here's how you can configure it:
-
-1. In your configuration file (e.g., `config.ts` or `environment.ts`):
+The transformer throws a `TransformError` when it encounters validation issues. To enable detailed error information, you need to set the `debug` configuration to `true` in the initialization of FastTransformInterceptor
 
 ```typescript
-export default () => ({
-  debug: process.env.DEBUG === 'true' || false,
-  // ... other configuration options
-});
-```
-
-2. When creating the `ConfigService`, make sure to load this configuration:
-
-```typescript
-import { ConfigModule } from '@nestjs/config';
-import config from './config';
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { FastTransformInterceptor } from './fast-transform.interceptor';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      load: [config],
-    }),
-    // ... other imports
+  providers: [
+     {
+        provide: APP_INTERCEPTOR,
+        useFactory: (reflector: Reflector) => {
+           return new FastTransformInterceptor({
+              reflector,
+              debug: true
+           });
+        },
+        inject: [Reflector]
+     },
   ],
-  // ... providers, etc.
 })
 export class AppModule {}
 ```
@@ -524,7 +540,7 @@ These errors are caught and converted to `BadRequestException` with appropriate 
 
 The `FastTransformInterceptor` includes a debug timing feature to help you measure the performance of the transformation process. To enable debug timing:
 
-1. Set the `debug` configuration to `true` in your `ConfigService` as described in the Error Handling section.
+1. Set the `debug` configuration to `true`.
 
 2. When debug mode is enabled, the interceptor will log the time taken for each transformation using `console.time()` and `console.timeEnd()`.
 
