@@ -1,6 +1,6 @@
 # FastTransformInterceptor Usage Documentation
 
-![CI](https://github.com/Grensesnitt/fast-transform-interceptor/workflows/CI/badge.svg)
+![CI](https://github.com/Grensesnitt/fast-transformer-interceptor/workflows/CI/badge.svg)
 
 The `FastTransformInterceptor` is a powerful tool for automatically transforming and validating your API responses in NestJS applications. This document covers all the possibilities and features of the transformer.
 
