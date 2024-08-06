@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+        nestjs-version: [7.x, 8.x, 9.x, 10.x]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - name: Install specific NestJS version
+        run: npm install @nestjs/common@${{ matrix.nestjs-version }} @nestjs/core@${{ matrix.nestjs-version }} @nestjs/platform-express@${{ matrix.nestjs-version }}
+      - run: npm run build --if-present
+      - run: npm test
