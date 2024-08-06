@@ -22,8 +22,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
+      - name: Remove NestJS packages
+        run: npm rm @nestjs/common @nestjs/core @nestjs/swagger
       - name: Install specific NestJS version
         run: npm install @nestjs/common@${{ matrix.nestjs-version }} @nestjs/core@${{ matrix.nestjs-version }} @nestjs/swagger@${{ matrix.nestjs-swagger-version }}
-      - run: npm run build --if-present
-      - run: npm test
+      - name: Build
+        run: npm run build --if-present
+      - name: Test
+        run: npm test
